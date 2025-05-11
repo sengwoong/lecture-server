@@ -30,7 +30,6 @@ db.role = require('./role.model')(sequelize, Sequelize);
 db.attendance = require('./attendance.model')(sequelize, Sequelize);
 db.lecture = require('./lecture.model')(sequelize, Sequelize);
 db.notice = require('./notice.model')(sequelize, Sequelize);
-db.board = require('./board.model')(sequelize, Sequelize);
 db.notification = require('./notification.model')(sequelize, Sequelize);
 db.absence = require('./absence.model')(sequelize, Sequelize);
 db.enrollment = require('./enrollment.model')(sequelize, Sequelize);
@@ -82,14 +81,6 @@ db.lecture.belongsToMany(db.user, {
   otherKey: 'studentId',
   as: 'enrolledStudents'
 });
-
-// 강의와 게시판 1:N 관계
-db.lecture.hasMany(db.board);
-db.board.belongsTo(db.lecture);
-
-// 교수와 게시판 1:N 관계 (게시글 작성자)
-db.user.hasMany(db.board, { foreignKey: 'userId' });
-db.board.belongsTo(db.user, { foreignKey: 'userId' });
 
 // 사용자와 병결 신청 1:N 관계
 db.user.hasMany(db.absence, { foreignKey: 'studentId' });
