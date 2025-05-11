@@ -17,6 +17,8 @@ const notificationRoutes = require('./routes/notification.routes');
 const absenceRoutes = require('./routes/absence.routes');
 const lectureRoutes = require('./routes/lecture.routes');
 const enrollmentRoutes = require('./routes/enrollment.routes');
+const attendanceRecordRoutes = require('./routes/attendance_record.routes');
+const lectureScheduleRoutes = require('./routes/lecture_schedule.routes');
 
 // 데이터베이스 연결
 const db = require('./models');
@@ -47,6 +49,8 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/absences', absenceRoutes);
 app.use('/api/lectures', lectureRoutes);
 app.use('/api/enrollments', enrollmentRoutes);
+app.use('/api/attendance-records', attendanceRecordRoutes);
+app.use('/api/lecture-schedules', lectureScheduleRoutes);
 
 // 기본 라우트
 app.get('/', (req, res) => {
@@ -57,7 +61,7 @@ app.get('/', (req, res) => {
 });
 
 // 데이터베이스 초기화 및 서버 시작
-db.sequelize.sync({ alter: false })
+db.sequelize.sync({ alter: true })
   .then(async () => {
     console.log('데이터베이스 연결 및 동기화 완료');
     

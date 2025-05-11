@@ -5,6 +5,14 @@ module.exports = (sequelize, Sequelize) => {
       primaryKey: true,
       autoIncrement: true
     },
+    recordId: {
+      type: Sequelize.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'attendance_records',
+        key: 'id'
+      }
+    },
     startDate: {
       type: Sequelize.DATEONLY,
       allowNull: false
@@ -34,16 +42,11 @@ module.exports = (sequelize, Sequelize) => {
     feedback: {
       type: Sequelize.TEXT
     },
-    createdAt: {
+    reviewerId: {
+      type: Sequelize.INTEGER
+    },
+    reviewedAt: {
       type: Sequelize.DATE
-    },
-    studentId: {
-      type: Sequelize.INTEGER,
-      allowNull: false
-    },
-    lectureId: {
-      type: Sequelize.INTEGER,
-      allowNull: false,
     }
   });
 

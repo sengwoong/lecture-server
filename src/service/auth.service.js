@@ -11,73 +11,40 @@ const Role = db.role;
  * @returns {Object} JSON 응답
  */
 exports.signup = async (req, res) => {
-  try {
-    // 사용자 정보 유효성 검사
-    if (!req.body.username || !req.body.email || !req.body.password || !req.body.name) {
-      return res.status(400).json({ message: '모든 필수 필드를 입력해주세요' });
-    }
 
-    // 비밀번호 해싱
-    const hashedPassword = await bcrypt.hash(req.body.password, 10);
-
-    // 역할 확인
-    let roleNames = ['student']; // 기본값은 학생 역할
-    let isProfessor = false;
-    
-    // 요청에 역할이 지정된 경우 해당 역할 사용
-    if (req.body.roles && req.body.roles.length > 0) {
-      // 요청된 역할이 'professor'인 경우에만 교수 역할 부여, 그 외에는 학생 역할 유지
-      if (req.body.roles.includes('professor')) {
-        roleNames = ['professor'];
-        isProfessor = true;
-      }
-    }
-    
-    // studentId 처리
-    let studentId = req.body.studentId;
-    
-    // 교수 계정이고 studentId가 비어있거나 없는 경우 자동 생성
-    if (isProfessor && (!studentId || studentId.trim() === '')) {
-      // 현재 시간을 기반으로 고유한 ID 생성
-      const timestamp = new Date().getTime();
-      const randomNum = Math.floor(Math.random() * 10000);
-      studentId = `P${timestamp % 10000}${randomNum}`;
-    }
-
-    // 사용자 생성
-    const user = await User.create({
-      username: req.body.username,
-      email: req.body.email,
-      password: hashedPassword,
-      name: req.body.name,
-      phone: req.body.phone,
-      studentId: studentId
-    });
-    
-    const roles = await Role.findAll({
-      where: {
-        name: {
-          [db.Sequelize.Op.in]: roleNames
-        }
-      }
-    });
-    
-    await user.setRoles(roles);
-
-    return res.status(201).json({ 
-      message: '회원가입이 완료되었습니다',
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        name: user.name,
-        roles: roleNames
-      }
-    });
-  } catch (error) {
-    console.error('회원가입 오류:', error);
-    return res.status(500).json({ message: '회원가입 중 오류가 발생했습니다' });
+  const { username, email, password, name, userType, studentId, department, grade, status, address, emergencyContact } = req.body;
+ 
+  // 이메일 중복 확인
+  const existingUser = await User.findOne({ where: { email } });
+  if (existingUser) {
+    return res.status(400).json({ message: '이미 사용중인 이메일입니다' });
   }
+  
+  // 학생인경우와 교수인경우 학번 중복 확인   
+  if (userType === 'student') {
+    // 학번 중복 확인   
+    const existingStudentId = await User.findOne({ where: { studentId } });
+    if (existingStudentId) {
+      return res.status(400).json({ message: '이미 사용중인 학번입니다' });
+  }
+  }else if (userType === 'professor') {
+    // 교번 중복 확인
+    const existingProfessorId = await User.findOne({ where: { professorId } });
+    if (existingProfessorId) {
+      return res.status(400).json({ message: '이미 사용중인 교번입니다' });
+    } 
+  }
+
+  // 비민번호 해쉬화
+  const hashedPassword = await bcrypt.hash(password, 10);
+  //  enrollmentDate 를 오늘 날짜로 설정  
+  const enrollmentDate = new Date().toISOString().split('T')[0];
+
+  // 회원가입
+  const newUser = await User.create({ username, email, password: hashedPassword, name, userType, studentId, department, grade, status, address, emergencyContact, enrollmentDate });
+
+  return res.status(200).json({ message: '회원가입이 성공적으로 완료되었습니다' });
+  
 };
 
 // 로그인

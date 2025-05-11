@@ -178,7 +178,7 @@ exports.createEnrollment = async (req, res) => {
 
     // 학생인지 확인
     const roles = user.roles.map(role => role.name);
-    if (!roles.includes('student')) {
+    if (!roles.includes('student') && user.userType !== 'student') {
       return res.status(403).json({ message: '학생만 수강신청이 가능합니다.' });
     }
 

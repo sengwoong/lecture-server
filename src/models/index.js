@@ -27,8 +27,10 @@ db.sequelize = sequelize;
 // 모델 정의
 db.user = require('./user.model')(sequelize, Sequelize);
 db.role = require('./role.model')(sequelize, Sequelize);
+db.attendance_record = require('./attendance_record.model')(sequelize, Sequelize);
 db.attendance = require('./attendance.model')(sequelize, Sequelize);
 db.lecture = require('./lecture.model')(sequelize, Sequelize);
+db.lecture_schedule = require('./lecture_schedule.model')(sequelize, Sequelize);
 db.notice = require('./notice.model')(sequelize, Sequelize);
 db.notification = require('./notification.model')(sequelize, Sequelize);
 db.absence = require('./absence.model')(sequelize, Sequelize);
@@ -47,13 +49,42 @@ db.user.belongsToMany(db.role, {
   otherKey: 'roleId'
 });
 
-// 강의와 출석 1:N 관계
-db.lecture.hasMany(db.attendance);
-db.attendance.belongsTo(db.lecture);
+// 강의와 출석 기록 1:N 관계
+db.lecture.hasMany(db.attendance_record, { foreignKey: 'lectureId' });
+db.attendance_record.belongsTo(db.lecture, { foreignKey: 'lectureId' });
 
-// 사용자와 출석 1:N 관계
-db.user.hasMany(db.attendance);
-db.attendance.belongsTo(db.user, { foreignKey: 'studentId' });
+// 강의와 강의 일정 1:N 관계
+db.lecture.hasMany(db.lecture_schedule, { foreignKey: 'lectureId', as: 'schedules' });
+db.lecture_schedule.belongsTo(db.lecture, { foreignKey: 'lectureId' });
+
+// 강의 일정 - 휴강/보충 자기 참조 관계 (self-referencing relationship)
+db.lecture_schedule.hasOne(db.lecture_schedule, { 
+  foreignKey: 'relatedScheduleId', 
+  as: 'makeupSchedule'  // 휴강 일정에서 보충 일정을 찾을 때
+});
+db.lecture_schedule.belongsTo(db.lecture_schedule, { 
+  foreignKey: 'relatedScheduleId', 
+  as: 'originalSchedule'  // 보충 일정에서 원래 휴강 일정을 찾을 때
+});
+
+// 강의 일정과 출석 기록 1:N 관계
+db.lecture_schedule.hasMany(db.attendance_record, { foreignKey: 'lectureScheduleId', as: 'attendanceRecords' });
+db.attendance_record.belongsTo(db.lecture_schedule, { foreignKey: 'lectureScheduleId', as: 'lectureSchedule' });
+
+// 사용자와 출석 기록 1:N 관계
+db.user.hasMany(db.attendance_record, { foreignKey: 'studentId' });
+db.attendance_record.belongsTo(db.user, { foreignKey: 'studentId', as: 'student' });
+
+// 출석 기록과 확장 모델 관계
+db.attendance_record.hasOne(db.attendance, { foreignKey: 'recordId' });
+db.attendance.belongsTo(db.attendance_record, { foreignKey: 'recordId' });
+
+db.attendance_record.hasOne(db.absence, { foreignKey: 'recordId' });
+db.absence.belongsTo(db.attendance_record, { foreignKey: 'recordId' });
+
+// 병결 리뷰어 관계 추가
+db.user.hasMany(db.absence, { foreignKey: 'reviewerId', as: 'reviewedAbsences' });
+db.absence.belongsTo(db.user, { foreignKey: 'reviewerId', as: 'reviewer' });
 
 // 교수와 강의 1:N 관계
 db.user.hasMany(db.lecture, { as: 'professorLectures' });
@@ -81,10 +112,6 @@ db.lecture.belongsToMany(db.user, {
   otherKey: 'studentId',
   as: 'enrolledStudents'
 });
-
-// 사용자와 병결 신청 1:N 관계
-db.user.hasMany(db.absence, { foreignKey: 'studentId' });
-db.absence.belongsTo(db.user, { foreignKey: 'studentId' });
 
 // 사용자와 알림 1:N 관계
 db.user.hasMany(db.notification);

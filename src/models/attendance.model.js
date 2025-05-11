@@ -5,32 +5,23 @@ module.exports = (sequelize, Sequelize) => {
       primaryKey: true,
       autoIncrement: true
     },
-    date: {
-      type: Sequelize.DATEONLY,
-      allowNull: false
-    },
-    status: {
-      type: Sequelize.ENUM('출석', '지각', '결석', '병결', '공결'),
+    // 외래 키로 attendance_records 참조
+    recordId: {
+      type: Sequelize.INTEGER,
       allowNull: false,
-      defaultValue: '출석'
+      references: {
+        model: 'attendance_records',
+        key: 'id'
+      }
     },
+    // 출석 체크 시간
     checkTime: {
       type: Sequelize.DATE
     },
+    // 출석 확인 방법
     checkMethod: {
       type: Sequelize.ENUM('QR', '수기', '자동'),
       defaultValue: '자동'
-    },
-    notes: {
-      type: Sequelize.TEXT
-    },
-    lectureId: {
-      type: Sequelize.INTEGER,
-      allowNull: false
-    },
-    studentId: {
-      type: Sequelize.INTEGER,
-      allowNull: false
     }
   });
 

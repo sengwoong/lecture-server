@@ -199,14 +199,16 @@ exports.createLecture = async (req, res) => {
       startTime, 
       endTime, 
       room, 
-      description 
+      description,
+      startDate,
+      endDate
     } = req.body;
     const userId = req.userId;
     
     // 필수 입력값 확인
-    if (!name || !code || !semester || !department) {
+    if (!name || !code || !semester || !department || !startDate || !endDate) {
       return res.status(400).json({ 
-        message: '강의명, 코드, 학기, 소속 학과는 필수 입력값입니다' 
+        message: '강의명, 코드, 학기, 소속 학과, 시작일, 종료일은 필수 입력값입니다' 
       });
     }
     
@@ -229,6 +231,8 @@ exports.createLecture = async (req, res) => {
       endTime: endTime || null,
       room: room || null,
       description: description || null,
+      startDate,
+      endDate,
       professorId: userId
     });
     
