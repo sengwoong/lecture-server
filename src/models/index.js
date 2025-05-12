@@ -86,6 +86,14 @@ db.absence.belongsTo(db.attendance_record, { foreignKey: 'recordId' });
 db.user.hasMany(db.absence, { foreignKey: 'reviewerId', as: 'reviewedAbsences' });
 db.absence.belongsTo(db.user, { foreignKey: 'reviewerId', as: 'reviewer' });
 
+// 학생과 조퇴 신청 관계 추가
+db.user.hasMany(db.absence, { foreignKey: 'studentId', as: 'absences' });
+db.absence.belongsTo(db.user, { foreignKey: 'studentId', as: 'student' });
+
+// 강의와 조퇴 신청 관계 추가
+db.lecture.hasMany(db.absence, { foreignKey: 'lectureId' });
+db.absence.belongsTo(db.lecture, { foreignKey: 'lectureId' });
+
 // 교수와 강의 1:N 관계
 db.user.hasMany(db.lecture, { as: 'professorLectures' });
 db.lecture.belongsTo(db.user, { as: 'professor' });
@@ -124,6 +132,17 @@ db.notice.belongsTo(db.user, { as: 'author', foreignKey: 'authorId' });
 // 강의와 공지사항 1:N 관계
 db.lecture.hasMany(db.notice, { foreignKey: 'lectureId' });
 db.notice.belongsTo(db.lecture, { foreignKey: 'lectureId' });
+
+// 출석(Attendance)와 사용자(User) 관계 추가
+// 출석은 학생(userType=student)에게 속한다
+// as: 'student'로 사용해야 include에서 정상 동작
+
+db.attendance.belongsTo(db.user, { foreignKey: 'studentId', as: 'student' });
+db.user.hasMany(db.attendance, { foreignKey: 'studentId', as: 'attendances' });
+
+// 출석(Attendance)와 강의(Lecture) 관계 추가
+db.attendance.belongsTo(db.lecture, { foreignKey: 'lectureId' });
+db.lecture.hasMany(db.attendance, { foreignKey: 'lectureId', as: 'attendances' });
 
 // 역할 기본값 설정 함수
 db.ROLES = [ 'professor', 'student'];

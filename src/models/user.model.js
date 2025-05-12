@@ -35,7 +35,7 @@ module.exports = (sequelize, Sequelize) => {
     studentId: {
       type: Sequelize.STRING,
       allowNull: true,
-      unique: true
+      comment: '학번 또는 교번'
     },
     userType: {
       type: Sequelize.ENUM('admin', 'professor', 'student'),

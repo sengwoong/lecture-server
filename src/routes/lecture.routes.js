@@ -12,6 +12,61 @@ const { verifyToken, isProfessor } = require('../middleware/authJwt');
 
 /**
  * @swagger
+ * /api/lectures/all:
+ *   get:
+ *     summary: 모든 강의 목록 조회 (권한 체크 없음)
+ *     description: 권한 체크 없이 모든 강의 목록을 조회합니다.
+ *     tags: [Lectures]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: 페이지 번호
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: 페이지당 강의 수
+ *       - in: query
+ *         name: semester
+ *         schema:
+ *           type: string
+ *         description: 학기 필터링 예시 2023-1
+ *       - in: query
+ *         name: department
+ *         schema:
+ *           type: string
+ *         description: 학과 필터링
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: 검색어
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           default: createdAt
+ *         description: 정렬 기준
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           default: DESC
+ *         description: 정렬 방향
+ *     responses:
+ *       200:
+ *         description: 강의 목록 조회 성공
+ *       500:
+ *         description: 서버 오류
+ */
+router.get('/all', lectureService.getAllLecturesWithoutAuth);
+
+/**
+ * @swagger
  * /api/lectures:
  *   get:
  *     summary: 강의 목록 조회

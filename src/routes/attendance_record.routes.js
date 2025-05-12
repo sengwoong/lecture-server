@@ -91,10 +91,10 @@ router.get('/students/:studentId', [verifyToken, isOwnerOrAuthorized], attendanc
 
 /**
  * @swagger
- * /api/attendance-records/attendance:
+ * /api/attendance-records:
  *   post:
- *     summary: 일반 출석 정보 생성
- *     description: 새로운 출석 정보를 생성합니다. 교수자만 접근 가능합니다.
+ *     summary: 통합 출석 기록 생성 (출석, 결석, 병결 등)
+ *     description: 출석 기록을 생성하고 상태에 따라 attendance와 absence 모델을 연결합니다. 교수자만 사용 가능합니다.
  *     tags: [AttendanceRecords]
  *     security:
  *       - bearerAuth: []
@@ -107,127 +107,48 @@ router.get('/students/:studentId', [verifyToken, isOwnerOrAuthorized], attendanc
  *             required:
  *               - lectureId
  *               - studentId
- *               - status
  *               - date
+ *               - status
  *             properties:
  *               lectureId:
- *                 type: string
+ *                 type: integer
  *                 description: 강의 ID
  *               studentId:
- *                 type: string
+ *                 type: integer
  *                 description: 학생 ID
- *               status:
- *                 type: string
- *                 enum: [출석, 지각, 결석]
- *                 description: 출석 상태
  *               date:
  *                 type: string
  *                 format: date
  *                 description: 출석 날짜
- *               time:
+ *               status:
  *                 type: string
- *                 format: time
- *                 description: 출석 시간 (HH:MM 형식)
- *               checkMethod:
- *                 type: string
- *                 enum: [QR, 수기, 자동]
- *                 description: 출석 체크 방법
+ *                 enum: [출석, 지각, 결석, 병결, 공결]
+ *                 description: 출석 상태
  *               notes:
  *                 type: string
  *                 description: 비고
+ *               checkMethod:
+ *                 type: string
+ *                 enum: [QR, 수기, 자동, 비밀번호]
+ *                 description: 출석 확인 방법
+ *               leaveTime:
+ *                 type: string
+ *                 format: time
+ *                 description: 조퇴/병결 시 필요한 시간 정보
+ *               absenceReason:
+ *                 type: string
+ *                 description: 조퇴/병결 사유
+ *               startTime:
+ *                 type: string
+ *                 format: time
+ *                 description: 강의 시작 시간
+ *               endTime:
+ *                 type: string
+ *                 format: time
+ *                 description: 강의 종료 시간
  *     responses:
  *       201:
- *         description: 출석 정보 생성 성공
- *       400:
- *         description: 잘못된 요청
- *       401:
- *         description: 인증 실패
- *       403:
- *         description: 권한 없음
- *       500:
- *         description: 서버 오류
- */
-router.post('/attendance', [verifyToken, isProfessor], attendanceRecordService.createAttendance);
-
-/**
- * @swagger
- * /api/attendance-records/absence:
- *   post:
- *     summary: 병결 신청 생성
- *     description: 새로운 병결 신청을 생성합니다.
- *     tags: [AttendanceRecords]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             required:
- *               - startDate
- *               - endDate
- *               - reason
- *               - lectureId
- *             properties:
- *               startDate:
- *                 type: string
- *                 format: date
- *               endDate:
- *                 type: string
- *                 format: date
- *               reason:
- *                 type: string
- *               lectureId:
- *                 type: string
- *               documents:
- *                 type: array
- *                 items:
- *                   type: string
- *                   format: binary
- *     responses:
- *       201:
- *         description: 병결 신청 생성 성공
- *       400:
- *         description: 잘못된 요청
- *       401:
- *         description: 인증 실패
- *       500:
- *         description: 서버 오류
- */
-router.post('/absence', [verifyToken, uploadMiddleware.array('documents', 5)], attendanceRecordService.createAbsence);
-
-/**
- * @swagger
- * /api/attendance-records/absence/{id}/status:
- *   put:
- *     summary: 병결 신청 상태 변경 (교수/관리자 전용)
- *     tags: [AttendanceRecords]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - status
- *             properties:
- *               status:
- *                 type: string
- *                 enum: [승인, 반려]
- *               feedback:
- *                 type: string
- *     responses:
- *       200:
- *         description: 병결 신청 상태 변경 성공
+ *         description: 출석 기록 생성 성공
  *       400:
  *         description: 잘못된 요청
  *       401:
@@ -235,134 +156,10 @@ router.post('/absence', [verifyToken, uploadMiddleware.array('documents', 5)], a
  *       403:
  *         description: 권한 없음
  *       404:
- *         description: 병결 신청을 찾을 수 없음
+ *         description: 학생 또는 강의를 찾을 수 없음
  *       500:
  *         description: 서버 오류
  */
-router.put('/absence/:id/status', [verifyToken, isProfessor], attendanceRecordService.updateAbsenceStatus);
-
-/**
- * @swagger
- * /api/attendance-records/absence/{id}:
- *   delete:
- *     summary: 병결 신청 삭제
- *     tags: [AttendanceRecords]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: 병결 신청 삭제 성공
- *       401:
- *         description: 인증 실패
- *       403:
- *         description: 권한 없음
- *       404:
- *         description: 병결 신청을 찾을 수 없음
- *       500:
- *         description: 서버 오류
- */
-router.delete('/absence/:id', [verifyToken, isOwnerOrAuthorized], attendanceRecordService.deleteAbsence);
-
-/**
- * @swagger
- * /api/attendance-records/qr/{lectureId}:
- *   get:
- *     summary: QR 코드 생성 (교수 전용)
- *     description: 출석 체크를 위한the QR 코드를 생성합니다.
- *     tags: [AttendanceRecords]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: lectureId
- *         required: true
- *         schema:
- *           type: string
- *         description: 강의 ID
- *     responses:
- *       200:
- *         description: QR 코드 생성 성공
- *       401:
- *         description: 인증 실패
- *       403:
- *         description: 권한 없음
- *       404:
- *         description: 강의를 찾을 수 없음
- *       500:
- *         description: 서버 오류
- */
-router.get('/qr/:lectureId', [verifyToken, isProfessor], attendanceRecordService.generateQRCode);
-
-/**
- * @swagger
- * /api/attendance-records/check-qr:
- *   post:
- *     summary: QR 코드로 출석 체크
- *     description: QR 코드를 사용하여 출석합니다.
- *     tags: [AttendanceRecords]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - qrData
- *             properties:
- *               qrData:
- *                 type: string
- *                 description: QR 코드에서 읽은 데이터
- *     responses:
- *       200:
- *         description: 출석 체크 성공
- *       400:
- *         description: 잘못된 요청
- *       401:
- *         description: 인증 실패
- *       500:
- *         description: 서버 오류
- */
-router.post('/check-qr', verifyToken, attendanceRecordService.checkAttendanceByQR);
-
-/**
- * @swagger
- * /api/attendance-records/absence/{id}/documents/{filename}:
- *   get:
- *     summary: 첨부 문서 다운로드
- *     tags: [AttendanceRecords]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *       - in: path
- *         name: filename
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: 파일 다운로드
- *       401:
- *         description: 인증 실패
- *       403:
- *         description: 권한 없음
- *       404:
- *         description: 파일을 찾을 수 없음
- *       500:
- *         description: 서버 오류
- */
-router.get('/absence/:id/documents/:filename', verifyToken, attendanceRecordService.downloadDocument);
+router.post('/', [verifyToken, isProfessor], attendanceRecordService.createAttendanceRecord);
 
 module.exports = router; 

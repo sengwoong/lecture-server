@@ -8,10 +8,23 @@ const { Op } = db.Sequelize;
  */
 exports.createLectureSchedule = async (req, res) => {
   try {
-    const { lectureId, week, date, startTime, endTime, topic, notes, scheduleType, makeupReason } = req.body;
+    const { 
+      lectureId, 
+      week, 
+      date, 
+      startTime, 
+      endTime, 
+      topic, 
+      notes, 
+      scheduleType, 
+      makeupReason 
+    } = req.body;
     
-    if (!lectureId || !week || !date || !startTime || !endTime) {
-      return res.status(400).json({ message: '강의 ID, 주차, 날짜, 시작/종료 시간은 필수 입력값입니다' });
+    // 필수 입력값 검증
+    if (!lectureId || !date || !startTime || !endTime) {
+      return res.status(400).json({ 
+        message: '강의 ID, 날짜, 시작 시간, 종료 시간은 필수 입력값입니다' 
+      });
     }
     
     // 강의 존재 여부 확인
@@ -20,38 +33,71 @@ exports.createLectureSchedule = async (req, res) => {
       return res.status(404).json({ message: '해당 강의를 찾을 수 없습니다' });
     }
     
-    // 중복 일정 확인 (보충 강의는 제외)
-    const existingSchedule = await LectureSchedule.findOne({
-      where: {
-        lectureId,
-        date
-      }
-    });
+    // 날짜 형식 검증
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date)) {
+      return res.status(400).json({ 
+        message: '날짜는 YYYY-MM-DD 형식이어야 합니다' 
+      });
+    }
     
-    if (existingSchedule) {
-      return res.status(400).json({ message: '해당 날짜에 이미 일정이 존재합니다' });
+    // 시간 형식 검증
+    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d):([0-5]\d)$/;
+    if (!timeRegex.test(startTime) || !timeRegex.test(endTime)) {
+      return res.status(400).json({ 
+        message: '시간은 HH:mm:ss 형식이어야 합니다' 
+      });
+    }
+    
+    // 중복 일정 확인 (보충 강의는 제외)
+    if (scheduleType !== '보충') {
+      const existingSchedule = await LectureSchedule.findOne({
+        where: {
+          lectureId,
+          date,
+          scheduleType: { [Op.ne]: '보충' }
+        }
+      });
+      
+      if (existingSchedule) {
+        return res.status(400).json({ 
+          message: '해당 날짜에 이미 일정이 존재합니다' 
+        });
+      }
     }
     
     // scheduleType 유효성 검사
     if (scheduleType && !['휴강', '보충'].includes(scheduleType)) {
-      return res.status(400).json({ message: '유효한 일정 유형이 아닙니다. (휴강/보충)' });
+      return res.status(400).json({ 
+        message: '유효한 일정 유형이 아닙니다 (휴강/보충)' 
+      });
     }
     
+    // 일정 생성
     const schedule = await LectureSchedule.create({
       lectureId,
-      week,
+      week: week || null,
       date,
       startTime,
       endTime,
-      topic,
       notes,
-      scheduleType,
-      makeupReason
+      scheduleType: scheduleType || null,
+      reason: makeupReason // reason 필드에 makeupReason 저장
+    });
+    
+    // 생성된 일정 조회 (관련 정보 포함)
+    const createdSchedule = await LectureSchedule.findByPk(schedule.id, {
+      include: [
+        {
+          model: Lecture,
+          attributes: ['id', 'name', 'code', 'semester']
+        }
+      ]
     });
     
     return res.status(201).json({
       message: '강의 일정이 생성되었습니다',
-      data: schedule
+      data: createdSchedule
     });
   } catch (error) {
     console.error('강의 일정 생성 오류:', error);

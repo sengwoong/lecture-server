@@ -124,6 +124,79 @@ exports.getAllLectures = async (req, res) => {
   }
 };
 
+// 권한 체크 없이 모든 강의 조회
+exports.getAllLecturesWithoutAuth = async (req, res) => {
+  try {
+    const { 
+      page = 1, 
+      limit = 10, 
+      semester, 
+      department, 
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'DESC'
+    } = req.query;
+    const offset = (page - 1) * limit;
+    
+    // 조건 설정
+    const condition = {
+      isActive: true
+    };
+    
+    if (semester) {
+      condition.semester = semester;
+    }
+    
+    if (department) {
+      condition.department = department;
+    }
+    
+    if (search) {
+      condition[Op.or] = [
+        { name: { [Op.like]: `%${search}%` } },
+        { code: { [Op.like]: `%${search}%` } },
+        { department: { [Op.like]: `%${search}%` } },
+        { description: { [Op.like]: `%${search}%` } }
+      ];
+    }
+    
+    // 정렬 설정
+    const order = [[sortBy, sortOrder]];
+    
+    // 강의 조회
+    const { count, rows: lectures } = await Lecture.findAndCountAll({
+      where: condition,
+      include: [
+        {
+          model: User,
+          as: 'professor',
+          attributes: ['id', 'name', 'email']
+        }
+      ],
+      order,
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+    
+    // 페이지네이션 정보
+    const totalPages = Math.ceil(count / limit);
+    const currentPage = parseInt(page);
+    
+    return res.status(200).json({
+      lectures,
+      pagination: {
+        totalItems: count,
+        totalPages,
+        currentPage,
+        itemsPerPage: parseInt(limit)
+      }
+    });
+  } catch (error) {
+    console.error('강의 조회 오류:', error);
+    return res.status(500).json({ message: '강의를 가져오는 중 오류가 발생했습니다' });
+  }
+};
+
 // 특정 강의 조회
 exports.getLectureById = async (req, res) => {
   try {
@@ -396,21 +469,23 @@ exports.getLectureStudents = async (req, res) => {
       return res.status(403).json({ message: '본인의 강의 수강생만 조회할 수 있습니다' });
     }
     
-    // 수강생 조회
-    const attendances = await Attendance.findAll({
+    // 수강생 조회 - Enrollment 테이블을 통해 수강 신청한 학생들 조회
+    const enrollments = await db.enrollment.findAll({
       where: { lectureId: id },
-      attributes: ['id', 'studentId', 'createdAt'],
       include: [
         {
           model: User,
+          as: 'student',
           attributes: ['id', 'name', 'email', 'studentId', 'phone', 'department']
         }
-      ],
-      group: ['studentId']
+      ]
     });
-    
+    console.log("enrollments");
+    console.log("enrollments");
+    console.log(enrollments);
+    console.log(enrollments);
     // 학생 정보 추출
-    const students = attendances.map(attendance => attendance.user);
+    const students = enrollments.map(enrollment => enrollment.student);
     
     return res.status(200).json({
       lecture: {
