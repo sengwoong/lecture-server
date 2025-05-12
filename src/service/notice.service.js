@@ -230,6 +230,20 @@ exports.createNotice = async (req, res) => {
       return res.status(400).json({ message: '제목과 내용을 입력해주세요' });
     }
 
+    // 카테고리 유효성 검사
+    const validCategories = ['학과', '장학', '수업', '행사', '기타'];
+    const validImportanceValues = ['일반', '중요', '긴급'];
+    
+    // 카테고리가 유효하지 않은 경우 기본값 사용
+    const validCategory = category && validCategories.includes(category) 
+      ? category 
+      : '기타';
+      
+    // 중요도가 유효하지 않은 경우 기본값 사용
+    const validImportance = importance && validImportanceValues.includes(importance)
+      ? importance
+      : '일반';
+
     // 첨부파일 처리
     const attachments = [];
     if (req.files && req.files.length > 0) {
@@ -248,12 +262,12 @@ exports.createNotice = async (req, res) => {
     const notice = await Notice.create({
       title,
       content,
-      category: category || '기타',
-      importance: importance || '일반',
+      category: validCategory,
+      importance: validImportance,
       startDate: startDate || new Date(),
       endDate: endDate || null,
       attachments: attachments.length > 0 ? attachments : null,
-      lectureId: lectureId || null,
+      lectureId: lectureId ? parseInt(lectureId, 10) : null,
       authorId: req.userId
     });
 
@@ -263,7 +277,7 @@ exports.createNotice = async (req, res) => {
     });
   } catch (error) {
     console.error('공지사항 생성 오류:', error);
-    return res.status(500).json({ message: '공지사항 생성 중 오류가 발생했습니다' });
+    return res.status(500).json({ message: '공지사항 생성 중 오류가 발생했습니다', error: error.message });
   }
 };
 
@@ -335,7 +349,7 @@ exports.updateNotice = async (req, res) => {
       startDate: startDate || notice.startDate,
       endDate: endDate === '' ? null : (endDate || notice.endDate),
       attachments: attachments.length > 0 ? attachments : null,
-      lectureId: lectureId === '' ? null : (lectureId || notice.lectureId)
+      lectureId: lectureId === '' ? null : (lectureId ? parseInt(lectureId, 10) : notice.lectureId)
     });
 
     return res.status(200).json({
@@ -458,7 +472,24 @@ exports.downloadAttachment = async (req, res) => {
       return res.status(404).json({ message: '파일이 서버에 존재하지 않습니다' });
     }
 
-    res.download(filePath, file.originalname);
+    // 한글 파일명 인코딩 처리
+    const originalFileName = file.originalname;
+    const userAgent = req.headers['user-agent'];
+    
+    // IE, Edge를 위한 인코딩
+    if (userAgent.includes('MSIE') || userAgent.includes('Trident') || userAgent.includes('Edge')) {
+      const encodedFileName = encodeURIComponent(originalFileName).replace(/\\+/g, '%20');
+      res.setHeader('Content-Disposition', `attachment; filename=${encodedFileName}`);
+    } 
+    // Chrome, Firefox, Safari 등 기타 브라우저를 위한 인코딩
+    else {
+      res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(originalFileName)}`);
+    }
+    
+    res.setHeader('Content-Type', file.mimetype || 'application/octet-stream');
+    
+    // 파일 전송
+    fs.createReadStream(filePath).pipe(res);
   } catch (error) {
     console.error('첨부파일 다운로드 오류:', error);
     return res.status(500).json({ message: '첨부파일 다운로드 중 오류가 발생했습니다' });

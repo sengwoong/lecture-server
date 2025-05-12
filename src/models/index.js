@@ -117,6 +117,14 @@ db.lecture.belongsToMany(db.user, {
 db.user.hasMany(db.notification);
 db.notification.belongsTo(db.user);
 
+// 사용자와 공지사항 1:N 관계
+db.user.hasMany(db.notice, { as: 'authoredNotices', foreignKey: 'authorId' });
+db.notice.belongsTo(db.user, { as: 'author', foreignKey: 'authorId' });
+
+// 강의와 공지사항 1:N 관계
+db.lecture.hasMany(db.notice, { foreignKey: 'lectureId' });
+db.notice.belongsTo(db.lecture, { foreignKey: 'lectureId' });
+
 // 역할 기본값 설정 함수
 db.ROLES = [ 'professor', 'student'];
 

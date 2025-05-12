@@ -12,7 +12,7 @@ const Role = db.role;
  */
 exports.signup = async (req, res) => {
 
-  const { username, email, password, name, userType, studentId, department, grade, status, address, emergencyContact } = req.body;
+  const { username, email, password, name, userType, roles, studentId, department, grade, status, address, emergencyContact } = req.body;
  
   // 이메일 중복 확인
   const existingUser = await User.findOne({ where: { email } });
@@ -20,28 +20,66 @@ exports.signup = async (req, res) => {
     return res.status(400).json({ message: '이미 사용중인 이메일입니다' });
   }
   
-  // 학생인경우와 교수인경우 학번 중복 확인   
-  if (userType === 'student') {
-    // 학번 중복 확인   
-    const existingStudentId = await User.findOne({ where: { studentId } });
-    if (existingStudentId) {
-      return res.status(400).json({ message: '이미 사용중인 학번입니다' });
-  }
-  }else if (userType === 'professor') {
-    // 교번 중복 확인
-    const existingProfessorId = await User.findOne({ where: { professorId } });
-    if (existingProfessorId) {
-      return res.status(400).json({ message: '이미 사용중인 교번입니다' });
-    } 
+  // 학번 중복 확인 (학생과 교수 모두 동일한 필드 사용)
+  const existingStudentId = await User.findOne({ where: { studentId } });
+  if (existingStudentId) {
+    return res.status(400).json({ message: '이미 사용중인 학번/교번입니다' });
   }
 
-  // 비민번호 해쉬화
+  // 비밀번호 해쉬화
   const hashedPassword = await bcrypt.hash(password, 10);
   //  enrollmentDate 를 오늘 날짜로 설정  
   const enrollmentDate = new Date().toISOString().split('T')[0];
 
+  // 요청에서 받은 roles 배열로 유저 타입 결정
+  let userTypeToSet = 'student'; // 기본값
+  if (roles && roles.includes('professor')) {
+    userTypeToSet = 'professor';
+  } else if (userType) {
+    // 직접 userType을 전달한 경우 사용
+    userTypeToSet = userType;
+  }
+
   // 회원가입
-  const newUser = await User.create({ username, email, password: hashedPassword, name, userType, studentId, department, grade, status, address, emergencyContact, enrollmentDate });
+  const newUser = await User.create({ 
+    username, 
+    email, 
+    password: hashedPassword, 
+    name, 
+    userType: userTypeToSet, 
+    studentId, 
+    department, 
+    grade, 
+    status, 
+    address, 
+    emergencyContact, 
+    enrollmentDate 
+  });
+
+  // 사용자 역할 설정
+  try {
+    if (roles && roles.length > 0) {
+      // 요청에서 받은 roles 배열 사용
+      for (const roleName of roles) {
+        const role = await Role.findOne({ where: { name: roleName } });
+        if (role) {
+          await newUser.addRole(role);
+        } else {
+          console.error(`Role ${roleName} not found`);
+        }
+      }
+    } else {
+      // 기본 역할 설정 (userType 기반)
+      const role = await Role.findOne({ where: { name: userTypeToSet } });
+      if (role) {
+        await newUser.addRole(role);
+      } else {
+        console.error(`Role ${userTypeToSet} not found`);
+      }
+    }
+  } catch (error) {
+    console.error('역할 할당 중 오류 발생:', error);
+  }
 
   return res.status(200).json({ message: '회원가입이 성공적으로 완료되었습니다' });
   

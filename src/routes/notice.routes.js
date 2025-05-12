@@ -26,9 +26,10 @@ const uploadMiddleware = require('../middleware/upload');
  *           type: string
  *         category:
  *           type: string
- *           enum: [일반, 학사, 행사, 취업]
- *         isImportant:
- *           type: boolean
+ *           enum: [학과, 장학, 수업, 행사, 기타]
+ *         importance:
+ *           type: string
+ *           enum: [일반, 중요, 긴급]
  *         startDate:
  *           type: string
  *           format: date
@@ -132,9 +133,12 @@ router.get('/:id', verifyToken, noticeService.getNoticeById);
  *                 type: string
  *               category:
  *                 type: string
- *                 enum: [일반, 학사, 행사, 취업]
- *               isImportant:
- *                 type: boolean
+ *                 enum: [학과, 장학, 수업, 행사, 기타]
+ *                 default: 기타
+ *               importance:
+ *                 type: string
+ *                 enum: [일반, 중요, 긴급]
+ *                 default: 일반
  *               startDate:
  *                 type: string
  *                 format: date
@@ -188,9 +192,10 @@ router.post('/', [verifyToken, isProfessor, uploadMiddleware.array('attachments'
  *                 type: string
  *               category:
  *                 type: string
- *                 enum: [일반, 학사, 행사, 취업]
- *               isImportant:
- *                 type: boolean
+ *                 enum: [학과, 장학, 수업, 행사, 기타]
+ *               importance:
+ *                 type: string
+ *                 enum: [일반, 중요, 긴급]
  *               startDate:
  *                 type: string
  *                 format: date
